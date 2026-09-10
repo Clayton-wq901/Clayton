@@ -10,7 +10,6 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppShell } from "../components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { LiveScannerProvider } from "@/lib/live-scanner";
@@ -40,9 +39,6 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
-  useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -82,7 +78,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "One OptiOn IA" },
       { name: "description", content: "Fechamentos automáticos, odds da Betano e análise Poisson + Dixon-Coles dos próximos jogos." },
-      { name: "author", content: "Lovable" },
+      { name: "author", content: "One OptiOn IA" },
       { name: "theme-color", content: "#3b82f6" },
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
@@ -92,11 +88,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:description", content: "Fechamentos automáticos, odds da Betano e análise Poisson + Dixon-Coles dos próximos jogos." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "One OptiOn IA" },
       { name: "twitter:description", content: "Fechamentos automáticos, odds da Betano e análise Poisson + Dixon-Coles dos próximos jogos." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4ff99690-ab1d-4194-8fa1-203960342196/id-preview-03154aa2--7eeddc7a-9fa8-446d-8af9-cd651635d88b.lovable.app-1784605769247.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4ff99690-ab1d-4194-8fa1-203960342196/id-preview-03154aa2--7eeddc7a-9fa8-446d-8af9-cd651635d88b.lovable.app-1784605769247.png" },
     ],
     links: [
       {
