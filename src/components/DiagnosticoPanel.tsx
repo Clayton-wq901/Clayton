@@ -53,7 +53,7 @@ function Bubble({ m }: { m: Msg }) {
   const copy = async () => {
     await navigator.clipboard.writeText(block ? block[1].trim() : m.content);
     setCopied(true);
-    toast.success("Prompt copiado — cole no Lovable.");
+    toast.success("Prompt copiado — copie para onde quiser.");
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -112,7 +112,7 @@ function Bubble({ m }: { m: Msg }) {
           className="mt-2 inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-primary/15 border border-primary/30 text-primary text-[10px] font-bold uppercase tracking-widest hover:bg-primary/25 transition"
         >
           {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-          {block ? "Copiar prompt pro Lovable" : "Copiar resposta"}
+          {block ? "Copiar prompt" : "Copiar resposta"}
         </button>
       </div>
     </div>
@@ -340,7 +340,7 @@ export function DiagnosticoPanel() {
             <h2 className="text-lg sm:text-xl font-black tracking-tight">Assistente IA de Diagnóstico & Melhorias</h2>
             <p className="text-xs text-muted-foreground">
               Engenheiro de IA residente: lê o banco real (bilhetes, 11 mercados, cache, rodadas), diagnostica e escreve o prompt
-              técnico pronto pra você colar no Lovable. Todo o histórico fica salvo no banco.
+              técnico pronto pra você copiar para onde quiser. Todo o histórico fica salvo no banco.
             </p>
           </div>
           <div className="ml-auto shrink-0 flex items-center gap-2">

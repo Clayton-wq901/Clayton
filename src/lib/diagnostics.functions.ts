@@ -1,7 +1,7 @@
 /**
  * Assistente IA de Diagnóstico & Melhorias.
  * Lê o estado real da plataforma no banco e conversa com o modelo para gerar
- * o diagnóstico + o prompt técnico pronto para colar no Lovable.
+ * o diagnóstico + o prompt técnico pronto para copiar para onde quiser.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
