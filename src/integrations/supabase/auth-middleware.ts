@@ -6,9 +6,9 @@ import type { Database } from "./types";
 /** Exige um usuário autenticado (token Bearer do Supabase) na server function. */
 export const requireSupabaseAuth = createMiddleware({ type: "function" }).server(
   async ({ next }) => {
-    const SUPABASE_URL = process.env["SUPABASE_URL"] || process.env["VITE_SUPABASE_URL"];
+    const SUPABASE_URL = process.env["APP_SUPABASE_URL"] || process.env["SUPABASE_URL"];
     const SUPABASE_ANON_KEY =
-      process.env["SUPABASE_ANON_KEY"] || process.env["VITE_SUPABASE_ANON_KEY"];
+      process.env["APP_SUPABASE_ANON_KEY"] || process.env["SUPABASE_ANON_KEY"];
 
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
       throw new Error("Supabase não configurado: defina SUPABASE_URL e SUPABASE_ANON_KEY.");
