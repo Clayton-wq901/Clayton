@@ -10,33 +10,219 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AiRouteImport } from './routes/ai'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as LiveRouteImport } from './routes/live'
+import { Route as PlacarRouteImport } from './routes/placar'
+import { Route as ProximoRouteImport } from './routes/proximo'
+import { Route as SeguinteRouteImport } from './routes/seguinte'
+import { Route as JogoFixtureIdRouteImport } from './routes/jogo.$fixtureId'
+import { Route as LigaLeagueIdRouteImport } from './routes/liga.$leagueId'
+import { Route as TimeTeamIdRouteImport } from './routes/time.$teamId'
+import { Route as ApiPublicExportRouteImport } from './routes/api/public/export'
+import { Route as ApiPublicAiAutoTicketsRouteImport } from './routes/api/public/ai/auto-tickets'
+import { Route as ApiPublicAiRoundRouteImport } from './routes/api/public/ai/round'
+import { Route as ApiPublicAiSelftestRouteImport } from './routes/api/public/ai/selftest'
+import { Route as ApiPublicAiSettleRouteImport } from './routes/api/public/ai/settle'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AiRoute = AiRouteImport.update({
+  id: '/ai',
+  path: '/ai',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LiveRoute = LiveRouteImport.update({
+  id: '/live',
+  path: '/live',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlacarRoute = PlacarRouteImport.update({
+  id: '/placar',
+  path: '/placar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProximoRoute = ProximoRouteImport.update({
+  id: '/proximo',
+  path: '/proximo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SeguinteRoute = SeguinteRouteImport.update({
+  id: '/seguinte',
+  path: '/seguinte',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JogoFixtureIdRoute = JogoFixtureIdRouteImport.update({
+  id: '/jogo/$fixtureId',
+  path: '/jogo/$fixtureId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LigaLeagueIdRoute = LigaLeagueIdRouteImport.update({
+  id: '/liga/$leagueId',
+  path: '/liga/$leagueId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TimeTeamIdRoute = TimeTeamIdRouteImport.update({
+  id: '/time/$teamId',
+  path: '/time/$teamId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicExportRoute = ApiPublicExportRouteImport.update({
+  id: '/api/public/export',
+  path: '/api/public/export',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicAiAutoTicketsRoute = ApiPublicAiAutoTicketsRouteImport.update({
+  id: '/api/public/ai/auto-tickets',
+  path: '/api/public/ai/auto-tickets',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicAiRoundRoute = ApiPublicAiRoundRouteImport.update({
+  id: '/api/public/ai/round',
+  path: '/api/public/ai/round',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicAiSelftestRoute = ApiPublicAiSelftestRouteImport.update({
+  id: '/api/public/ai/selftest',
+  path: '/api/public/ai/selftest',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicAiSettleRoute = ApiPublicAiSettleRouteImport.update({
+  id: '/api/public/ai/settle',
+  path: '/api/public/ai/settle',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/ai': typeof AiRoute
+  '/auth': typeof AuthRoute
+  '/live': typeof LiveRoute
+  '/placar': typeof PlacarRoute
+  '/proximo': typeof ProximoRoute
+  '/seguinte': typeof SeguinteRoute
+  '/jogo/$fixtureId': typeof JogoFixtureIdRoute
+  '/liga/$leagueId': typeof LigaLeagueIdRoute
+  '/time/$teamId': typeof TimeTeamIdRoute
+  '/api/public/export': typeof ApiPublicExportRoute
+  '/api/public/ai/auto-tickets': typeof ApiPublicAiAutoTicketsRoute
+  '/api/public/ai/round': typeof ApiPublicAiRoundRoute
+  '/api/public/ai/selftest': typeof ApiPublicAiSelftestRoute
+  '/api/public/ai/settle': typeof ApiPublicAiSettleRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/ai': typeof AiRoute
+  '/auth': typeof AuthRoute
+  '/live': typeof LiveRoute
+  '/placar': typeof PlacarRoute
+  '/proximo': typeof ProximoRoute
+  '/seguinte': typeof SeguinteRoute
+  '/jogo/$fixtureId': typeof JogoFixtureIdRoute
+  '/liga/$leagueId': typeof LigaLeagueIdRoute
+  '/time/$teamId': typeof TimeTeamIdRoute
+  '/api/public/export': typeof ApiPublicExportRoute
+  '/api/public/ai/auto-tickets': typeof ApiPublicAiAutoTicketsRoute
+  '/api/public/ai/round': typeof ApiPublicAiRoundRoute
+  '/api/public/ai/selftest': typeof ApiPublicAiSelftestRoute
+  '/api/public/ai/settle': typeof ApiPublicAiSettleRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/ai': typeof AiRoute
+  '/auth': typeof AuthRoute
+  '/live': typeof LiveRoute
+  '/placar': typeof PlacarRoute
+  '/proximo': typeof ProximoRoute
+  '/seguinte': typeof SeguinteRoute
+  '/jogo/$fixtureId': typeof JogoFixtureIdRoute
+  '/liga/$leagueId': typeof LigaLeagueIdRoute
+  '/time/$teamId': typeof TimeTeamIdRoute
+  '/api/public/export': typeof ApiPublicExportRoute
+  '/api/public/ai/auto-tickets': typeof ApiPublicAiAutoTicketsRoute
+  '/api/public/ai/round': typeof ApiPublicAiRoundRoute
+  '/api/public/ai/selftest': typeof ApiPublicAiSelftestRoute
+  '/api/public/ai/settle': typeof ApiPublicAiSettleRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/ai'
+    | '/auth'
+    | '/live'
+    | '/placar'
+    | '/proximo'
+    | '/seguinte'
+    | '/jogo/$fixtureId'
+    | '/liga/$leagueId'
+    | '/time/$teamId'
+    | '/api/public/export'
+    | '/api/public/ai/auto-tickets'
+    | '/api/public/ai/round'
+    | '/api/public/ai/selftest'
+    | '/api/public/ai/settle'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/ai'
+    | '/auth'
+    | '/live'
+    | '/placar'
+    | '/proximo'
+    | '/seguinte'
+    | '/jogo/$fixtureId'
+    | '/liga/$leagueId'
+    | '/time/$teamId'
+    | '/api/public/export'
+    | '/api/public/ai/auto-tickets'
+    | '/api/public/ai/round'
+    | '/api/public/ai/selftest'
+    | '/api/public/ai/settle'
+  id:
+    | '__root__'
+    | '/'
+    | '/ai'
+    | '/auth'
+    | '/live'
+    | '/placar'
+    | '/proximo'
+    | '/seguinte'
+    | '/jogo/$fixtureId'
+    | '/liga/$leagueId'
+    | '/time/$teamId'
+    | '/api/public/export'
+    | '/api/public/ai/auto-tickets'
+    | '/api/public/ai/round'
+    | '/api/public/ai/selftest'
+    | '/api/public/ai/settle'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AiRoute: typeof AiRoute
+  AuthRoute: typeof AuthRoute
+  LiveRoute: typeof LiveRoute
+  PlacarRoute: typeof PlacarRoute
+  ProximoRoute: typeof ProximoRoute
+  SeguinteRoute: typeof SeguinteRoute
+  JogoFixtureIdRoute: typeof JogoFixtureIdRoute
+  LigaLeagueIdRoute: typeof LigaLeagueIdRoute
+  TimeTeamIdRoute: typeof TimeTeamIdRoute
+  ApiPublicExportRoute: typeof ApiPublicExportRoute
+  ApiPublicAiAutoTicketsRoute: typeof ApiPublicAiAutoTicketsRoute
+  ApiPublicAiRoundRoute: typeof ApiPublicAiRoundRoute
+  ApiPublicAiSelftestRoute: typeof ApiPublicAiSelftestRoute
+  ApiPublicAiSettleRoute: typeof ApiPublicAiSettleRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +234,123 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ai': {
+      id: '/ai'
+      path: '/ai'
+      fullPath: '/ai'
+      preLoaderRoute: typeof AiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/live': {
+      id: '/live'
+      path: '/live'
+      fullPath: '/live'
+      preLoaderRoute: typeof LiveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/placar': {
+      id: '/placar'
+      path: '/placar'
+      fullPath: '/placar'
+      preLoaderRoute: typeof PlacarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/proximo': {
+      id: '/proximo'
+      path: '/proximo'
+      fullPath: '/proximo'
+      preLoaderRoute: typeof ProximoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/seguinte': {
+      id: '/seguinte'
+      path: '/seguinte'
+      fullPath: '/seguinte'
+      preLoaderRoute: typeof SeguinteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/jogo/$fixtureId': {
+      id: '/jogo/$fixtureId'
+      path: '/jogo/$fixtureId'
+      fullPath: '/jogo/$fixtureId'
+      preLoaderRoute: typeof JogoFixtureIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/liga/$leagueId': {
+      id: '/liga/$leagueId'
+      path: '/liga/$leagueId'
+      fullPath: '/liga/$leagueId'
+      preLoaderRoute: typeof LigaLeagueIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/time/$teamId': {
+      id: '/time/$teamId'
+      path: '/time/$teamId'
+      fullPath: '/time/$teamId'
+      preLoaderRoute: typeof TimeTeamIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/export': {
+      id: '/api/public/export'
+      path: '/api/public/export'
+      fullPath: '/api/public/export'
+      preLoaderRoute: typeof ApiPublicExportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/ai/auto-tickets': {
+      id: '/api/public/ai/auto-tickets'
+      path: '/api/public/ai/auto-tickets'
+      fullPath: '/api/public/ai/auto-tickets'
+      preLoaderRoute: typeof ApiPublicAiAutoTicketsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/ai/round': {
+      id: '/api/public/ai/round'
+      path: '/api/public/ai/round'
+      fullPath: '/api/public/ai/round'
+      preLoaderRoute: typeof ApiPublicAiRoundRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/ai/selftest': {
+      id: '/api/public/ai/selftest'
+      path: '/api/public/ai/selftest'
+      fullPath: '/api/public/ai/selftest'
+      preLoaderRoute: typeof ApiPublicAiSelftestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/ai/settle': {
+      id: '/api/public/ai/settle'
+      path: '/api/public/ai/settle'
+      fullPath: '/api/public/ai/settle'
+      preLoaderRoute: typeof ApiPublicAiSettleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AiRoute: AiRoute,
+  AuthRoute: AuthRoute,
+  LiveRoute: LiveRoute,
+  PlacarRoute: PlacarRoute,
+  ProximoRoute: ProximoRoute,
+  SeguinteRoute: SeguinteRoute,
+  JogoFixtureIdRoute: JogoFixtureIdRoute,
+  LigaLeagueIdRoute: LigaLeagueIdRoute,
+  TimeTeamIdRoute: TimeTeamIdRoute,
+  ApiPublicExportRoute: ApiPublicExportRoute,
+  ApiPublicAiAutoTicketsRoute: ApiPublicAiAutoTicketsRoute,
+  ApiPublicAiRoundRoute: ApiPublicAiRoundRoute,
+  ApiPublicAiSelftestRoute: ApiPublicAiSelftestRoute,
+  ApiPublicAiSettleRoute: ApiPublicAiSettleRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
