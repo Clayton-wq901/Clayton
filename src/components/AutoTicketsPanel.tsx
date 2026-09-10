@@ -196,20 +196,30 @@ function TicketCard({ row, hideRisky }: { row: AutoTicketRow; hideRisky: boolean
   );
 }
 
+const VERDICT: Record<string, { label: string; cls: string }> = {
+  otimo: { label: "Indo muito bem", cls: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" },
+  bom: { label: "Indo bem", cls: "bg-emerald-500/10 text-emerald-200 border-emerald-500/20" },
+  atencao: { label: "Atenção", cls: "bg-amber-500/15 text-amber-300 border-amber-500/30" },
+  ruim: { label: "Indo mal", cls: "bg-red-500/15 text-red-300 border-red-500/30" },
+  "sem-dados": { label: "Sem amostra", cls: "bg-white/5 text-muted-foreground border-white/10" },
+};
+
 function MarketRanking() {
   const load = useServerFn(marketAccuracy);
   const q = useQuery({ queryKey: ["market-accuracy"], queryFn: () => load(), staleTime: 60_000 });
-  const rows = q.data ?? [];
+  const rows = q.data?.rows ?? [];
+  const updatedAt = q.data?.updatedAt ?? null;
 
   return (
     <div className="rounded-2xl border border-border/60 bg-card/70 p-4">
       <div className="flex items-center gap-2">
         <BarChart3 className="h-4 w-4 text-emerald-400" />
-        <h3 className="text-[14px] font-black tracking-tight">Assertividade por Mercado</h3>
+        <h3 className="text-[14px] font-black tracking-tight">Ranking dos Mercados</h3>
         {q.isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-400" />}
       </div>
       <p className="text-[11px] text-muted-foreground mt-1">
-        Raio-X histórico dos 11 mercados considerando todos os bilhetes já conferidos.
+        Os 11 mercados dos bilhetes automáticos, ordenados pelo acerto após a conferência automática.
+        {updatedAt ? ` Último registro salvo: ${new Date(updatedAt).toLocaleString("pt-BR")}.` : ""}
       </p>
 
       {!q.isLoading && rows.length === 0 && (
@@ -226,31 +236,46 @@ function MarketRanking() {
                 <th className="text-right font-semibold py-1">G</th>
                 <th className="text-right font-semibold py-1">R</th>
                 <th className="text-right font-semibold py-1">Acerto</th>
+                <th className="text-right font-semibold py-1">14 dias</th>
+                <th className="text-right font-semibold py-1">Situação</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/40">
-              {rows.map((r) => (
-                <tr key={r.market}>
-                  <td className="py-1.5 pr-2 font-semibold truncate max-w-[170px]">
-                    {r.market}
-                    {r.greens + r.reds >= 20 && r.accuracy < RISK_THRESHOLD ? (
-                      <span className="ml-1 inline-flex items-center gap-0.5 rounded bg-red-500/15 px-1 py-0.5 text-[8px] font-black uppercase text-red-300">
-                        <AlertTriangle className="h-2.5 w-2.5" /> Risco crítico
+              {rows.map((r) => {
+                const v = VERDICT[r.verdict] ?? VERDICT["sem-dados"]!;
+                return (
+                  <tr key={r.market}>
+                    <td className="py-1.5 pr-2 font-semibold truncate max-w-[170px]">
+                      {r.market}
+                      {r.greens + r.reds >= 20 && r.accuracy < RISK_THRESHOLD ? (
+                        <span className="ml-1 inline-flex items-center gap-0.5 rounded bg-red-500/15 px-1 py-0.5 text-[8px] font-black uppercase text-red-300">
+                          <AlertTriangle className="h-2.5 w-2.5" /> Risco crítico
+                        </span>
+                      ) : null}
+                    </td>
+                    <td className="py-1.5 text-right tabular-nums">{r.total}</td>
+                    <td className="py-1.5 text-right tabular-nums text-emerald-400">{r.greens}</td>
+                    <td className="py-1.5 text-right tabular-nums text-red-400">{r.reds}</td>
+                    <td
+                      className={`py-1.5 text-right font-black tabular-nums ${
+                        r.accuracy >= 0.6 ? "text-emerald-400" : r.accuracy >= 0.45 ? "text-amber-400" : "text-red-400"
+                      }`}
+                    >
+                      {r.greens + r.reds ? pct(r.accuracy) : "—"}
+                    </td>
+                    <td className="py-1.5 text-right tabular-nums text-muted-foreground">
+                      {r.recentGreens + r.recentReds ? pct(r.recentAccuracy) : "—"}
+                    </td>
+                    <td className="py-1.5 text-right">
+                      <span
+                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] font-black uppercase tracking-wide ${v.cls}`}
+                      >
+                        {v.label}
                       </span>
-                    ) : null}
-                  </td>
-                  <td className="py-1.5 text-right tabular-nums">{r.total}</td>
-                  <td className="py-1.5 text-right tabular-nums text-emerald-400">{r.greens}</td>
-                  <td className="py-1.5 text-right tabular-nums text-red-400">{r.reds}</td>
-                  <td
-                    className={`py-1.5 text-right font-black tabular-nums ${
-                      r.accuracy >= 0.6 ? "text-emerald-400" : r.accuracy >= 0.45 ? "text-amber-400" : "text-red-400"
-                    }`}
-                  >
-                    {r.greens + r.reds ? pct(r.accuracy) : "—"}
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
