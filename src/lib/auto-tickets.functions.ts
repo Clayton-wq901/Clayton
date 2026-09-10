@@ -51,10 +51,14 @@ export const runAutoTickets = createServerFn({ method: "POST" })
 export const gradeAutoTickets = createServerFn({ method: "POST" })
   .inputValidator((d: { limit?: number } | undefined) => d ?? {})
   .handler(async ({ data }) => {
-    const { gradePending, overduePendingCount, purgeExpiredCache } = await import("./auto-tickets.server");
+    const { gradePending, overduePendingCount, purgeExpiredCache, persistMarketRanking } = await import(
+      "./auto-tickets.server"
+    );
+    const { AUTO_MARKETS } = await import("./auto-ticket");
     const limit = Math.min(Math.max(data.limit ?? 400, 50), 800);
     const graded = await gradePending(limit);
     await purgeExpiredCache().catch(() => 0);
+    await persistMarketRanking(AUTO_MARKETS).catch(() => []);
     return { ok: true, graded, backlog: await overduePendingCount() };
   });
 
@@ -113,42 +117,23 @@ export interface MarketAccuracyRow {
   reds: number;
   voids: number;
   accuracy: number;
+  recentGreens: number;
+  recentReds: number;
+  recentAccuracy: number;
+  verdict: "otimo" | "bom" | "atencao" | "ruim" | "sem-dados";
 }
 
-/** Ranking histórico de assertividade por mercado (todos os bilhetes conferidos). */
-export const marketAccuracy = createServerFn({ method: "GET" }).handler(async (): Promise<MarketAccuracyRow[]> => {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const agg = new Map<string, { g: number; r: number; v: number }>();
-  const page = 500;
-  for (let i = 0; i < 40; i++) {
-    const { data, error } = await supabaseAdmin
-      .from("auto_tickets")
-      .select("picks")
-      .eq("status", "graded")
-      .order("graded_at", { ascending: false })
-      .range(i * page, i * page + page - 1);
-    if (error) throw new Error(error.message);
-    const rows = (data ?? []) as unknown as { picks: { market: string; status?: string }[] }[];
-    for (const row of rows) {
-      for (const p of row.picks ?? []) {
-        if (!p?.market) continue;
-        const cur = agg.get(p.market) ?? { g: 0, r: 0, v: 0 };
-        if (p.status === "green") cur.g++;
-        else if (p.status === "red") cur.r++;
-        else cur.v++;
-        agg.set(p.market, cur);
-      }
-    }
-    if (rows.length < page) break;
-  }
-  return [...agg.entries()]
-    .map(([market, v]) => ({
-      market,
-      total: v.g + v.r + v.v,
-      greens: v.g,
-      reds: v.r,
-      voids: v.v,
-      accuracy: v.g + v.r ? v.g / (v.g + v.r) : 0,
-    }))
-    .sort((a, b) => b.accuracy - a.accuracy || b.total - a.total);
+/**
+ * Ranking dos 11 mercados: consolida todas as conferências automáticas
+ * e devolve também o desempenho recente (últimos 14 dias) e o veredito.
+ */
+export const marketAccuracy = createServerFn({ method: "GET" }).handler(async (): Promise<{
+  updatedAt: string | null;
+  rows: MarketAccuracyRow[];
+}> => {
+  const { computeMarketRanking, readMarketRankingSnapshot } = await import("./auto-tickets.server");
+  const { AUTO_MARKETS } = await import("./auto-ticket");
+  const rows = await computeMarketRanking(AUTO_MARKETS);
+  const snap = await readMarketRankingSnapshot().catch(() => ({ at: null, rows: [] }));
+  return { updatedAt: snap.at, rows };
 });

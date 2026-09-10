@@ -145,6 +145,10 @@ export async function runAutoTicketsBatch(limit = 6): Promise<AutoTicketsProgres
     // 1) Conferência em lote — no máximo 1 vez a cada 30 minutos.
     if (await throttleGate(GRADE_THROTTLE_KEY, GRADE_INTERVAL_MS)) {
       graded = await gradePending(400);
+      if (graded > 0) {
+        const { AUTO_MARKETS } = await import("./auto-ticket");
+        await persistMarketRanking(AUTO_MARKETS).catch(() => []);
+      }
     }
 
     // 2) Varredura (geração) — no máximo 1 vez a cada 15 minutos.
@@ -455,4 +459,119 @@ export async function purgeExpiredCache(): Promise<number> {
     .lt("expires_at", new Date().toISOString())
     .select("key");
   return (data ?? []).length;
+}
+
+/* ============================================================
+ * RANKING DE MERCADOS (conferência automática)
+ * Consolida green/red/void por mercado e guarda um retrato em
+ * `api_cache` a cada conferência — leitura instantânea no painel.
+ * ========================================================== */
+export interface MarketRankingRow {
+  market: string;
+  total: number;
+  greens: number;
+  reds: number;
+  voids: number;
+  accuracy: number;
+  recentGreens: number;
+  recentReds: number;
+  recentAccuracy: number;
+  verdict: "otimo" | "bom" | "atencao" | "ruim" | "sem-dados";
+}
+
+const RANKING_KEY = "market_ranking_snapshot";
+const RECENT_DAYS = 14;
+
+function verdictOf(g: number, r: number, acc: number): MarketRankingRow["verdict"] {
+  const n = g + r;
+  if (n < 5) return "sem-dados";
+  if (acc >= 0.65) return "otimo";
+  if (acc >= 0.55) return "bom";
+  if (acc >= 0.45) return "atencao";
+  return "ruim";
+}
+
+/** Recalcula o ranking a partir de todos os bilhetes já conferidos. */
+export async function computeMarketRanking(markets: readonly string[] = []): Promise<MarketRankingRow[]> {
+  const db = await admin();
+  const recentCut = Date.now() - RECENT_DAYS * 24 * 60 * 60 * 1000;
+  const agg = new Map<string, { g: number; r: number; v: number; rg: number; rr: number }>();
+  const bump = (m: string) => {
+    const cur = agg.get(m) ?? { g: 0, r: 0, v: 0, rg: 0, rr: 0 };
+    agg.set(m, cur);
+    return cur;
+  };
+  for (const m of markets) bump(m);
+
+  const page = 500;
+  for (let i = 0; i < 40; i++) {
+    const { data, error } = await db
+      .from("auto_tickets")
+      .select("picks, graded_at")
+      .eq("status", "graded")
+      .order("graded_at", { ascending: false })
+      .range(i * page, i * page + page - 1);
+    if (error) throw new Error(error.message);
+    const rows = (data ?? []) as unknown as { picks: { market: string; status?: string }[]; graded_at: string | null }[];
+    for (const row of rows) {
+      const isRecent = row.graded_at ? new Date(row.graded_at).getTime() >= recentCut : false;
+      for (const p of row.picks ?? []) {
+        if (!p?.market) continue;
+        const cur = bump(p.market);
+        if (p.status === "green") {
+          cur.g++;
+          if (isRecent) cur.rg++;
+        } else if (p.status === "red") {
+          cur.r++;
+          if (isRecent) cur.rr++;
+        } else cur.v++;
+      }
+    }
+    if (rows.length < page) break;
+  }
+
+  const out: MarketRankingRow[] = [...agg.entries()].map(([market, v]) => {
+    const accuracy = v.g + v.r ? v.g / (v.g + v.r) : 0;
+    const recentAccuracy = v.rg + v.rr ? v.rg / (v.rg + v.rr) : 0;
+    return {
+      market,
+      total: v.g + v.r + v.v,
+      greens: v.g,
+      reds: v.r,
+      voids: v.v,
+      accuracy,
+      recentGreens: v.rg,
+      recentReds: v.rr,
+      recentAccuracy,
+      verdict: verdictOf(v.g, v.r, accuracy),
+    };
+  });
+
+  out.sort((a, b) => {
+    const an = a.greens + a.reds, bn = b.greens + b.reds;
+    if (!an && bn) return 1;
+    if (an && !bn) return -1;
+    return b.accuracy - a.accuracy || bn - an;
+  });
+  return out;
+}
+
+/** Guarda o retrato do ranking (histórico automático de desempenho). */
+export async function persistMarketRanking(markets: readonly string[] = []): Promise<MarketRankingRow[]> {
+  const rows = await computeMarketRanking(markets);
+  const db = await admin();
+  await db.from("api_cache").upsert({
+    key: RANKING_KEY,
+    data: { at: new Date().toISOString(), rows } as unknown as never,
+    expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+  });
+  return rows;
+}
+
+/** Último retrato salvo (sem recalcular) — usado como leitura rápida. */
+export async function readMarketRankingSnapshot(): Promise<{ at: string | null; rows: MarketRankingRow[] }> {
+  const db = await admin();
+  const { data } = await db.from("api_cache").select("data").eq("key", RANKING_KEY).maybeSingle();
+  const payload = (data?.data ?? null) as { at?: string; rows?: MarketRankingRow[] } | null;
+  return { at: payload?.at ?? null, rows: payload?.rows ?? [] };
 }
