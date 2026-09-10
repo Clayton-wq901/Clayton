@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-const MODEL = process.env["OPENAI_MODEL"] ?? "gpt-4o-mini";
+const getModel = () => process.env["OPENAI_MODEL"] ?? "gpt-4o-mini";
 
 const PROMPTS: Record<string, string> = {
   match:
@@ -39,7 +39,7 @@ export const getAiInsight = createServerFn({ method: "POST" })
         Authorization: `Bearer ${key}`,
       },
       body: JSON.stringify({
-        model: MODEL,
+        model: getModel(),
         messages: [
           { role: "system", content: PROMPTS[data.kind] },
           { role: "user", content: data.context },

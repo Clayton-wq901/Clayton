@@ -7,7 +7,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const MODEL = process.env["OPENAI_MODEL"] ?? "gpt-4o-mini";
+const getModel = () => process.env["OPENAI_MODEL"] ?? "gpt-4o-mini";
 
 export type { PlatformSnapshot } from "./diagnostics.server";
 
@@ -70,7 +70,7 @@ export const diagnosticChat = createServerFn({ method: "POST" })
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       body: JSON.stringify({
-        model: MODEL,
+        model: getModel(),
         messages: [
           { role: "system", content: SYSTEM },
           {
@@ -176,7 +176,7 @@ export const introMessage = createServerFn({ method: "GET" }).handler(async () =
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     body: JSON.stringify({
-      model: MODEL,
+      model: getModel(),
       messages: [
         { role: "system", content: SYSTEM },
         { role: "system", content: `SNAPSHOT REAL DO BANCO (JSON):\n${JSON.stringify(snapshot)}` },
