@@ -1,2 +1,0 @@
--- Agendamentos removidos desta migração porque continham URL e chave de outro projeto.
--- Use supabase/setup-agendamentos.example.sql após definir o domínio publicado e CRON_SECRET.

@@ -1,1 +1,0 @@
-ALTER TABLE public.auto_tickets ADD COLUMN IF NOT EXISTS result_snapshot JSONB;
