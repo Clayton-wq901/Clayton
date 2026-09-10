@@ -25,10 +25,44 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    const url = new URL(window.location.href);
+    const hash = new URLSearchParams(url.hash.replace(/^#/, ""));
+    const oauthError =
+      url.searchParams.get("error_description") ||
+      url.searchParams.get("error") ||
+      hash.get("error_description") ||
+      hash.get("error");
+    if (oauthError) {
+      setError(decodeURIComponent(oauthError));
+      return;
+    }
+
+    const code = url.searchParams.get("code");
+    if (code) {
+      setBusy(true);
+      supabase.auth
+        .exchangeCodeForSession(code)
+        .then(({ error }) => {
+          if (error) {
+            setError(error.message);
+            setBusy(false);
+            return;
+          }
+          window.history.replaceState({}, "", "/auth");
+          navigate({ to: "/" });
+        })
+        .catch((err: unknown) => {
+          setError(err instanceof Error ? err.message : "Falha ao concluir o login com Google");
+          setBusy(false);
+        });
+      return;
+    }
+
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) navigate({ to: "/" });
     });
   }, [navigate]);
+
 
   const handleEmail = async (e: React.FormEvent) => {
     e.preventDefault();
