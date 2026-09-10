@@ -51,10 +51,14 @@ export const runAutoTickets = createServerFn({ method: "POST" })
 export const gradeAutoTickets = createServerFn({ method: "POST" })
   .inputValidator((d: { limit?: number } | undefined) => d ?? {})
   .handler(async ({ data }) => {
-    const { gradePending, overduePendingCount, purgeExpiredCache } = await import("./auto-tickets.server");
+    const { gradePending, overduePendingCount, purgeExpiredCache, persistMarketRanking } = await import(
+      "./auto-tickets.server"
+    );
+    const { AUTO_MARKETS } = await import("./auto-ticket");
     const limit = Math.min(Math.max(data.limit ?? 400, 50), 800);
     const graded = await gradePending(limit);
     await purgeExpiredCache().catch(() => 0);
+    await persistMarketRanking(AUTO_MARKETS).catch(() => []);
     return { ok: true, graded, backlog: await overduePendingCount() };
   });
 

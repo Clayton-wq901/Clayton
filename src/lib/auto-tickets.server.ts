@@ -145,6 +145,10 @@ export async function runAutoTicketsBatch(limit = 6): Promise<AutoTicketsProgres
     // 1) Conferência em lote — no máximo 1 vez a cada 30 minutos.
     if (await throttleGate(GRADE_THROTTLE_KEY, GRADE_INTERVAL_MS)) {
       graded = await gradePending(400);
+      if (graded > 0) {
+        const { AUTO_MARKETS } = await import("./auto-ticket");
+        await persistMarketRanking(AUTO_MARKETS).catch(() => []);
+      }
     }
 
     // 2) Varredura (geração) — no máximo 1 vez a cada 15 minutos.
