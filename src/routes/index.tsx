@@ -114,7 +114,7 @@ const MARKET_LABELS: Record<MarketFilterId, string> = {
   corners_o95: "Escanteios Over 9.5",
 };
 
-function applyFilter(fixtures: ApiFixture[], filter: FilterId): ApiFixture[] {
+function applyFilter(fixtures: ApiFixture[], filter: FilterId, nowMs: number): ApiFixture[] {
   if (!fixtures || fixtures.length === 0) return [];
 
   const byTimeAsc = (a: ApiFixture, b: ApiFixture) => a.fixture.timestamp - b.fixture.timestamp;
@@ -122,7 +122,10 @@ function applyFilter(fixtures: ApiFixture[], filter: FilterId): ApiFixture[] {
 
   const isLive = (f: ApiFixture) => LIVE_STATUSES.has(f.fixture.status.short);
   const isFinished = (f: ApiFixture) => FINISHED_STATUSES.has(f.fixture.status.short);
-  const isNotStarted = (f: ApiFixture) => !isLive(f) && !isFinished(f);
+  const isUpcoming = (f: ApiFixture) => {
+    const status = f.fixture.status.short;
+    return (status === "NS" || status === "TBD") && f.fixture.timestamp * 1000 > nowMs;
+  };
 
   switch (filter) {
     case "live":
@@ -133,8 +136,9 @@ function applyFilter(fixtures: ApiFixture[], filter: FilterId): ApiFixture[] {
       return fixtures.filter(isFinished).sort(byTimeDesc);
 
     case "upcoming":
-      // Somente jogos que ainda NÃO começaram
-      return fixtures.filter(isNotStarted).sort(byTimeAsc);
+      // Remove da fila assim que chega o horário de início, abrindo espaço
+      // para as próximas partidas mesmo se a atualização da API atrasar.
+      return fixtures.filter(isUpcoming).sort(byTimeAsc);
 
     default:
       return [...fixtures].sort(byTimeAsc);
@@ -241,6 +245,7 @@ function TodosPage() {
   const { date } = Route.useSearch();
   const selected = date ?? todayISO();
   const [filter, setFilter] = useState<FilterId>("upcoming");
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const [groupMode, setGroupMode] = useState<GroupModeId>("time");
   const activeSection = useActiveSection();
   const pinned = usePinnedSections();
@@ -252,6 +257,11 @@ function TodosPage() {
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
   const [scannedFixtures, setScannedFixtures] = useState<ApiFixture[]>([]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const folder = (["bingao", "loteca", "radar", "beta", "alfha", "especiais-betano", "auditoria", "diagnostico"] as SectionId[]).includes(activeSection as SectionId)
     ? (activeSection as SectionId)
@@ -403,7 +413,7 @@ function TodosPage() {
     }
     
     // Aplica o filtro de status/horário
-    list = applyFilter(list, filter);
+    list = applyFilter(list, filter, nowMs);
 
     // Se houver filtro de mercado, aplicamos a lógica de ordenação por probabilidade
     if (market !== "none" && predictions.length > 0) {
@@ -441,7 +451,7 @@ function TodosPage() {
     }
 
     return list;
-  }, [q.data, liveQ.data, filter, folder, pinned, search, predictions, market, scannedFixtures]);
+  }, [q.data, liveQ.data, filter, folder, pinned, search, predictions, market, scannedFixtures, nowMs]);
 
 
   const groups = useMemo(() => {
