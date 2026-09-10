@@ -95,6 +95,7 @@ GRANT ALL ON public.ai_predictions TO service_role;
 ALTER TABLE public.ai_predictions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public read ai_predictions" ON public.ai_predictions;
 DROP POLICY IF EXISTS "Allow insert ai_predictions" ON public.ai_predictions;
+DROP POLICY IF EXISTS "Allow update ai_predictions" ON public.ai_predictions;
 DROP POLICY IF EXISTS "Public manage predictions" ON public.ai_predictions;
 DROP POLICY IF EXISTS "Public Read Predictions" ON public.ai_predictions;
 CREATE POLICY "Public read ai_predictions" ON public.ai_predictions FOR SELECT TO anon, authenticated USING (true);
