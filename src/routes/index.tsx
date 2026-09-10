@@ -53,7 +53,7 @@ function todayISO() {
   return `${y}-${m}-${dd}`;
 }
 
-const SITE_URL = "https://playful-wink-smile.lovable.app";
+const SITE_URL = (import.meta.env["VITE_SITE_URL"] as string | undefined) ?? "https://one-option.app";
 const PAGE_TITLE = "Jogos de futebol ao vivo hoje — placar, HT e escanteios em tempo real";
 const PAGE_DESC = "Acompanhe todos os jogos do dia com placar minuto a minuto, filtros por horário e análise inteligente pra decidir suas apostas com mais confiança.";
 
@@ -457,7 +457,7 @@ function TodosPage() {
           league: {
             name: MARKET_LABELS[market],
             country: "Oportunidades IA",
-            logo: "https://id-preview--fed8f50b-e395-478b-b1fd-1f47c438c7b3.lovable.app/lovable-uploads/64756c64-77ba-4b82-95f2-4933a38ce2a1.png",
+            logo: `${SITE_URL}/icon-512.png`,
             flag: null,
             id: 0,
             season: 0,

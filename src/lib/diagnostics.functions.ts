@@ -29,7 +29,7 @@ Responda SEMPRE em português do Brasil, neste formato exato em markdown:
 ## Verificação de integridade
 Bullets curtos: o que está saudável e o que está degradado (cobertura, assertividade por mercado, cache, rodadas, snapshots de varredura).
 
-## Prompt pronto para o Lovable
+## Prompt técnico pronto
 Um bloco de código \`\`\`text contendo um comando técnico, cirúrgico e autossuficiente (arquivos prováveis, comportamento esperado, regras de negócio, critérios de aceite). Nada de "verifique se" genérico — instrução executável.
 
 Seja direto, sem enrolação e sem repetir o snapshot cru.`;
