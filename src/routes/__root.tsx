@@ -13,6 +13,8 @@ import appCss from "../styles.css?url";
 import { AppShell } from "../components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { LiveScannerProvider } from "@/lib/live-scanner";
+import { getPublicConfigFn } from "@/lib/public-config.functions";
+import { setPublicConfig } from "@/lib/public-config";
 
 function NotFoundComponent() {
   return (
@@ -101,6 +103,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
     ],
   }),
+  loader: async () => {
+    const config = await getPublicConfigFn();
+    setPublicConfig(config);
+    return { config };
+  },
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -122,6 +129,8 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 function RootComponent() {
+  const { config } = Route.useLoaderData();
+  setPublicConfig(config);
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
   const pathname = router.state.location.pathname;
