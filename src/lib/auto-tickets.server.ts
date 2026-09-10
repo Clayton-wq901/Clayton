@@ -1,0 +1,458 @@
+/**
+ * Módulo 3 — Motor server-only dos Bilhetes Automáticos (11 mercados).
+ *
+ * Estratégia de consumo controlado:
+ *  - lote pequeno por execução (limite duro);
+ *  - espaçamento entre jogos (sem picos de requisições);
+ *  - lock de execução única gravado em `api_cache` (evita rodadas paralelas);
+ *  - progresso persistido: cada jogo processado vira uma linha em `auto_tickets`,
+ *    então uma nova execução só pega o que falta (carga incremental).
+ */
+import type { ApiFixture, TeamPreviewStats } from "./api-football.functions";
+import { upcomingFixtures, recentFinishedIndex } from "./api-football-raw.server";
+import { computeOwnPrediction } from "./own-prediction";
+import { buildAutoPicks, gradeAutoPicks, readMatchNarrative, resultReason, type AutoPick, type MatchResult } from "./auto-ticket";
+
+const LOCK_KEY = "auto_tickets_lock";
+const LOCK_TTL_MS = 4 * 60 * 1000;
+const GRADE_THROTTLE_KEY = "auto_tickets_grade_throttle";
+const GRADE_INTERVAL_MS = 30 * 60 * 1000; // conferência: 1x a cada 30 min
+const SCAN_THROTTLE_KEY = "auto_tickets_scan_throttle";
+const SCAN_INTERVAL_MS = 15 * 60 * 1000; // varredura: 1x a cada 15 min
+const GAP_MS = 150; // espacamento entre jogos (plano Pro)
+const HORIZON_HOURS = 24;
+const CORNERS_AVG = 5.0; // estimativa quando não há estatística disponível
+const CARDS_AVG = 2.0;
+
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Monta as médias de um time a partir do índice de jogos encerrados recentes. */
+function teamStatsFromIndex(teamId: number, idx: Map<number, ApiFixture[]>, last = 5): TeamPreviewStats {
+  const games = (idx.get(teamId) ?? []).slice(0, last);
+  const empty: TeamPreviewStats = {
+    played: 0, goalsFor: 0, goalsAgainst: 0, goalsForAvg: 0, goalsAgainstAvg: 0,
+    cornersFor: 0, cornersAgainst: 0, cornersForAvg: 0, cornersAgainstAvg: 0, cornersTotalAvg: 0,
+    cornersSample: 0, cornersEstimated: true,
+    shotsOnGoalAvg: 0, cardsAvg: CARDS_AVG, bttsPct: 0, over25Pct: 0,
+    cleanSheetPct: 0, failedToScorePct: 0, form: "", lastResults: [],
+  };
+  if (!games.length) return empty;
+
+  let gf = 0, ga = 0, btts = 0, over25 = 0, cs = 0, fs = 0;
+  const form: string[] = [];
+  const lastResults: TeamPreviewStats["lastResults"] = [];
+  for (const f of games) {
+    const isHome = f.teams.home.id === teamId;
+    const goalsFor = (isHome ? f.goals.home : f.goals.away) ?? 0;
+    const goalsAg = (isHome ? f.goals.away : f.goals.home) ?? 0;
+    gf += goalsFor; ga += goalsAg;
+    if (goalsFor > 0 && goalsAg > 0) btts++;
+    if (goalsFor + goalsAg > 2.5) over25++;
+    if (goalsAg === 0) cs++;
+    if (goalsFor === 0) fs++;
+    const result = goalsFor > goalsAg ? "V" : goalsFor < goalsAg ? "D" : "E";
+    form.push(result);
+    lastResults.push({ date: f.fixture.date, opp: isHome ? f.teams.away.name : f.teams.home.name, gf: goalsFor, ga: goalsAg, home: isHome, result });
+  }
+  const n = games.length;
+  return {
+    played: n,
+    goalsFor: gf,
+    goalsAgainst: ga,
+    goalsForAvg: gf / n,
+    goalsAgainstAvg: ga / n,
+    cornersFor: 0, cornersAgainst: 0,
+    cornersForAvg: CORNERS_AVG, cornersAgainstAvg: CORNERS_AVG, cornersTotalAvg: CORNERS_AVG * 2,
+    cornersSample: 0, cornersEstimated: true,
+    shotsOnGoalAvg: 0,
+    cardsAvg: CARDS_AVG,
+    bttsPct: btts / n,
+    over25Pct: over25 / n,
+    cleanSheetPct: cs / n,
+    failedToScorePct: fs / n,
+    form: form.join(""),
+    lastResults,
+  };
+}
+
+
+export interface AutoTicketsProgress {
+  ok: boolean;
+  total: number;
+  done: number;
+  processed: number;
+  graded: number;
+  progress: number; // 0..100
+  skipped?: string;
+}
+
+async function admin() {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  return supabaseAdmin;
+}
+
+async function acquireLock(): Promise<boolean> {
+  const db = await admin();
+  const now = new Date();
+  const { data } = await db.from("api_cache").select("expires_at").eq("key", LOCK_KEY).maybeSingle();
+  if (data?.expires_at && new Date(data.expires_at).getTime() > now.getTime()) return false;
+  await db.from("api_cache").upsert({
+    key: LOCK_KEY,
+    data: { at: now.toISOString() },
+    expires_at: new Date(now.getTime() + LOCK_TTL_MS).toISOString(),
+  });
+  return true;
+}
+
+async function releaseLock() {
+  const db = await admin();
+  await db.from("api_cache").update({ expires_at: new Date(Date.now() - 1000).toISOString() }).eq("key", LOCK_KEY);
+}
+
+/**
+ * Trava de frequência persistida em `api_cache`: devolve true (e renova a janela)
+ * apenas quando o intervalo mínimo já passou desde a última execução.
+ */
+async function throttleGate(key: string, windowMs: number): Promise<boolean> {
+  const db = await admin();
+  const now = Date.now();
+  const { data } = await db.from("api_cache").select("expires_at").eq("key", key).maybeSingle();
+  if (data?.expires_at && new Date(data.expires_at).getTime() > now) return false;
+  await db.from("api_cache").upsert({
+    key,
+    data: { at: new Date(now).toISOString() },
+    expires_at: new Date(now + windowMs).toISOString(),
+  });
+  return true;
+}
+
+/** Executa um lote controlado: gera bilhetes dos próximos jogos e confere os encerrados. */
+export async function runAutoTicketsBatch(limit = 6): Promise<AutoTicketsProgress> {
+  if (!(await acquireLock())) {
+    const snap = await snapshotProgress();
+    return { ...snap, ok: true, processed: 0, graded: 0, skipped: "lock" };
+  }
+
+  let processed = 0;
+  let graded = 0;
+  try {
+    const db = await admin();
+
+    // 0) Manutenção: remove chaves de cache já expiradas (evita acúmulo).
+    await purgeExpiredCache().catch(() => 0);
+
+    // 1) Conferência em lote — no máximo 1 vez a cada 30 minutos.
+    if (await throttleGate(GRADE_THROTTLE_KEY, GRADE_INTERVAL_MS)) {
+      graded = await gradePending(400);
+    }
+
+    // 2) Varredura (geração) — no máximo 1 vez a cada 15 minutos.
+    if (!(await throttleGate(SCAN_THROTTLE_KEY, SCAN_INTERVAL_MS))) {
+      const snap = await snapshotProgress();
+      return { ...snap, ok: true, processed: 0, graded, skipped: "throttle" };
+    }
+    const genBudget = limit;
+
+    const upcoming = await upcomingFixtures(HORIZON_HOURS);
+
+
+    const ids = upcoming.map((f) => f.fixture.id);
+    const known = new Set<number>();
+    for (let i = 0; i < ids.length; i += 200) {
+      const { data: existing } = await db
+        .from("auto_tickets")
+        .select("fixture_id")
+        .in("fixture_id", ids.slice(i, i + 200));
+      for (const r of existing ?? []) known.add(Number(r.fixture_id));
+    }
+
+    const pending = upcoming.filter((f) => !known.has(f.fixture.id));
+
+    const scans: Record<string, unknown>[] = [];
+
+    if (pending.length && genBudget > 0) {
+      const idx = await recentFinishedIndex(12);
+      for (const fx of pending.slice(0, genBudget)) {
+        try {
+          const built = buildRow(fx, idx);
+          if (built) {
+            const { scan, ...row } = built;
+            await db.from("auto_tickets").upsert(row, { onConflict: "fixture_id" });
+            scans.push({
+              fixture_id: scan.fixtureId,
+              market: "scan_snapshot",
+              probability: Math.round((scan.bestProb ?? 0) * 100),
+              score: 0,
+              features: scan as unknown as never,
+            });
+          } else {
+            // Sem amostra suficiente: registra como "skipped" para não travar o progresso.
+            await db.from("auto_tickets").upsert(
+              {
+                fixture_id: fx.fixture.id,
+                kickoff: fx.fixture.date,
+                league: `${fx.league.country ?? ""} · ${fx.league.name}`.replace(/^ · /, ""),
+                home: fx.teams.home.name,
+                away: fx.teams.away.name,
+                home_logo: fx.teams.home.logo,
+                away_logo: fx.teams.away.logo,
+                picks: [] as unknown as never,
+                meta: {} as unknown as never,
+                status: "skipped",
+              },
+              { onConflict: "fixture_id" },
+            );
+          }
+          processed++;
+        } catch (e) {
+          console.warn("[auto-tickets] falha ao gerar", fx.fixture.id, (e as Error).message);
+        }
+        await sleep(GAP_MS);
+      }
+    }
+
+    // Persiste os selos da varredura (leitura instantânea ao abrir o site).
+    if (scans.length) {
+      const ids = scans.map((s) => Number(s['fixture_id']));
+      await db.from("ai_predictions").delete().eq("market", "scan_snapshot").in("fixture_id", ids);
+      await db.from("ai_predictions").insert(scans as never);
+    }
+
+
+
+
+    // Registra a rodada da varredura (histórico/diagnóstico).
+    await db.from("ai_rounds").insert({
+      slot: (() => {
+        const h = new Date().getUTCHours();
+        return h < 12 ? "morning" : h < 18 ? "afternoon" : "night";
+      })(),
+      status: "done",
+      fixtures_analyzed: processed,
+      notes: `graded=${graded} scans=${scans.length}`,
+    } as never);
+
+    const total = upcoming.length;
+    const done = Math.min(total, known.size + processed);
+    return {
+      ok: true,
+      total,
+      done,
+      processed,
+      graded,
+      progress: total ? Math.round((done / total) * 100) : 100,
+    };
+  } finally {
+    await releaseLock();
+  }
+}
+
+function buildRow(fx: ApiFixture, idx: Map<number, ApiFixture[]>) {
+  const home = teamStatsFromIndex(fx.teams.home.id, idx);
+  const away = teamStatsFromIndex(fx.teams.away.id, idx);
+  if (!home.played || !away.played) return null;
+
+  const pred = computeOwnPrediction(home, away);
+  if (!pred.ready) return null;
+
+  const ctx = {
+    homeName: fx.teams.home.name,
+    awayName: fx.teams.away.name,
+    cornersOver95: pred.pCornersOver95,
+    cardsOver45: Math.min(0.95, Math.max(0.05, (home.cardsAvg + away.cardsAvg) / 9)),
+  };
+  const narrative = readMatchNarrative(pred, ctx);
+  const picks = buildAutoPicks(pred, ctx);
+  if (!picks.length) return null;
+
+  const scan = {
+    fixtureId: fx.fixture.id,
+    pUnder15: pred.pUnder15,
+    pOver15: pred.pOver15,
+    pUnder25: pred.pUnder25,
+    pOver25: pred.pOver25,
+    pBTTS: pred.pBTTS,
+    pNoBTTS: pred.pNoBTTS,
+    pCornersOver95: pred.pCornersOver95,
+    bestProb: Math.max(pred.pUnder15, pred.pOver25, pred.pBTTS, pred.pCornersOver95),
+  };
+
+  return {
+    scan,
+    fixture_id: fx.fixture.id,
+    kickoff: fx.fixture.date,
+    league: `${fx.league.country ?? ""} · ${fx.league.name}`.replace(/^ · /, ""),
+    home: fx.teams.home.name,
+    away: fx.teams.away.name,
+    home_logo: fx.teams.home.logo,
+    away_logo: fx.teams.away.logo,
+    picks: picks as unknown as never,
+    meta: {
+      lambdaHome: pred.lambdaHome,
+      lambdaAway: pred.lambdaAway,
+      expectedGoals: pred.expectedGoals,
+      expectedCorners: pred.expectedCorners,
+      sampleHome: home.played,
+      sampleAway: away.played,
+      headline: narrative.headline,
+      flow: narrative.flow,
+      // cluster de proteção (top 3 placares) usado pelos mercados de placar exato
+      scoreCluster: (() => {
+        const multi = picks.find((p) => p.market === "Placar Múltiplo Exato");
+        return multi && multi.rule.t === "scores"
+          ? multi.rule.list.map(([i, j]) => `${i}-${j}`)
+          : [];
+      })(),
+    } as unknown as never,
+
+    status: "pending",
+  };
+}
+
+
+/** Quantos bilhetes pendentes já passaram do apito final (fila de conferência). */
+export async function overduePendingCount(): Promise<number> {
+  const db = await admin();
+  const cutoff = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+  const { count } = await db
+    .from("auto_tickets")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "pending")
+    .lt("kickoff", cutoff);
+  return count ?? 0;
+}
+
+/** Data (São Paulo) de um kickoff ISO — usada para agrupar a conferência por dia. */
+function spDate(iso: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(iso));
+}
+
+/**
+ * Conferência em LOTE: no máximo 2 requisições por execução.
+ * Uma chamada por data (`/fixtures?date=YYYY-MM-DD&status=FT-AET-PEN`) e o
+ * cruzamento com `auto_tickets` acontece localmente — nunca `fixtures/statistics`
+ * jogo a jogo. Escanteios/cartões ficam nulos (o grading trata como void).
+ */
+export async function gradePending(limit = 400): Promise<number> {
+  const db = await admin();
+  const cutoff = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+  const { data: rows } = await db
+    .from("auto_tickets")
+    .select("id, fixture_id, picks, kickoff, home, away")
+    .eq("status", "pending")
+    .lt("kickoff", cutoff)
+    .order("kickoff", { ascending: true })
+    .limit(Math.max(limit, 50));
+
+  const pending = rows ?? [];
+  if (!pending.length) return 0;
+
+  // Agrupa por data e processa no máximo 2 datas (teto duro de 2 requisições).
+  const byDate = new Map<string, typeof pending>();
+  for (const r of pending) {
+    const d = spDate(String(r.kickoff));
+    const arr = byDate.get(d) ?? [];
+    arr.push(r);
+    byDate.set(d, arr);
+  }
+  const dates = [...byDate.keys()].sort().slice(0, 2);
+
+  let graded = 0;
+  for (const date of dates) {
+    const { finishedFixturesByDate } = await import("./api-football-raw.server");
+    let finished: ApiFixture[] = [];
+    try {
+      finished = await finishedFixturesByDate(date);
+    } catch (e) {
+      console.warn("[auto-tickets] falha ao buscar encerrados", date, (e as Error).message);
+      continue;
+    }
+    const map = new Map<number, ApiFixture>();
+    for (const f of finished) map.set(f.fixture.id, f);
+
+    for (const row of byDate.get(date) ?? []) {
+      const fx = map.get(Number(row.fixture_id));
+      if (!fx) {
+        const stale = Date.now() - new Date(row.kickoff as string).getTime() > 12 * 60 * 60 * 1000;
+        if (stale) {
+          await db
+            .from("auto_tickets")
+            .update({ status: "void", graded_at: new Date().toISOString() })
+            .eq("id", row.id);
+        }
+        continue;
+      }
+
+      const result: MatchResult = {
+        goalsH: fx.goals.home ?? 0,
+        goalsA: fx.goals.away ?? 0,
+        htH: fx.score.halftime.home,
+        htA: fx.score.halftime.away,
+        corners: null,
+        cards: null,
+        firstGoal: null,
+        homeName: String(row.home ?? "Casa"),
+        awayName: String(row.away ?? "Fora"),
+      };
+
+      const g = gradeAutoPicks((row.picks ?? []) as unknown as AutoPick[], result);
+      const { error } = await db
+        .from("auto_tickets")
+        .update({
+          picks: g.picks as unknown as never,
+          status: "graded",
+          result: result as unknown as never,
+          result_snapshot: {
+            home_score: result.goalsH,
+            away_score: result.goalsA,
+            ht_home_score: result.htH ?? null,
+            ht_away_score: result.htA ?? null,
+            total_corners: null,
+            total_cards: null,
+            first_goal: null,
+            reason: resultReason(result),
+          } as unknown as never,
+          greens: g.greens,
+          reds: g.reds,
+          accuracy: g.accuracy,
+          graded_at: new Date().toISOString(),
+        })
+        .eq("id", row.id);
+      if (error) console.warn("[auto-tickets] falha ao gravar conferência", row.fixture_id, error.message);
+      else graded++;
+    }
+  }
+  return graded;
+}
+
+
+/** Progresso sem gastar chamadas da API-Football. */
+export async function snapshotProgress(): Promise<AutoTicketsProgress> {
+  const db = await admin();
+  const now = new Date();
+  const horizon = new Date(now.getTime() + HORIZON_HOURS * 60 * 60 * 1000);
+  const { count } = await db
+    .from("auto_tickets")
+    .select("id", { count: "exact", head: true })
+    .gte("kickoff", now.toISOString())
+    .lte("kickoff", horizon.toISOString());
+  const done = count ?? 0;
+  return { ok: true, total: done, done, processed: 0, graded: 0, progress: done ? 100 : 0 };
+}
+
+/** Remove chaves de cache vencidas (evita leitura desatualizada e inchaço da tabela). */
+export async function purgeExpiredCache(): Promise<number> {
+  const db = await admin();
+  const { data } = await db
+    .from("api_cache")
+    .delete()
+    .lt("expires_at", new Date().toISOString())
+    .select("key");
+  return (data ?? []).length;
+}
