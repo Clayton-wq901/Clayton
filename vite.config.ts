@@ -16,12 +16,10 @@ export default defineConfig({
     define: {
       // Public Supabase values (URL + publishable/anon key) exposed to the browser.
       "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(
-        process.env["VITE_SUPABASE_URL"] || process.env["EXT_SUPABASE_URL"] || "",
+        process.env["VITE_SUPABASE_URL"] || "",
       ),
       "import.meta.env.VITE_SUPABASE_ANON_KEY": JSON.stringify(
-        process.env["VITE_SUPABASE_ANON_KEY"] ||
-          process.env["EXT_SUPABASE_PUBLISHABLE_KEY"] ||
-          "",
+        process.env["VITE_SUPABASE_ANON_KEY"] || "",
       ),
     },
   },

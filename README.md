@@ -1,26 +1,47 @@
-# Direct Supabase Connect
+# OneOption — instalação independente
 
-Este projeto veio do GitHub. Quero que você remova qualquer integração com o Lovable Cloud e configure o aplicativo para se conectar diretamente a uma conta externa do Supabase usando as minhas próprias credenciais. As minhas chaves são: VITE_SUPABASE_URL = [sua url] e VITE_SUPABASE_ANON_KEY = [sua chave]. Ajuste o arquivo de cliente do Supabase (supabase/client.ts ou similar) para usar essas variáveis."
+Este projeto usa **Supabase nativo** com `@supabase/supabase-js`. Não depende do Lovable Cloud para banco ou autenticação.
 
-This project was built with [Lovable](https://lovable.dev).
+## 1. Instalar o banco
 
-**Live app**: https://direct-data-buddy.lovable.app
+Crie um projeto no Supabase, abra **SQL Editor**, cole todo o conteúdo de [`supabase/setup-supabase-completo.sql`](supabase/setup-supabase-completo.sql) e execute.
 
-## Build with Lovable
+O instalador pode ser executado novamente e prepara as dez tabelas usadas pelo aplicativo, seus campos, índices, permissões, políticas de segurança, gatilhos e os pesos iniciais da IA. O app atual não usa Storage nem funções RPC, então não é necessário criar bucket ou RPC.
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/73d1ccbc-159e-4c5d-8fc3-59fb7a993267).
+## 2. Configurar variáveis
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+Copie `.env.example` para `.env` e preencha:
 
-## Development
+- `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`: conexão pública do navegador.
+- `SUPABASE_URL`, `SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY`: conexão no servidor.
+- `CRON_SECRET`: segredo longo e exclusivo para proteger tarefas automáticas.
+- `OPENAI_API_KEY`: análises com IA.
+- `API_FOOTBALL_KEY`: jogos, estatísticas e resultados.
+- `VITE_SITE_URL`: URL pública final.
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+Nunca exponha `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `OPENAI_API_KEY` ou `API_FOOTBALL_KEY` no navegador.
+
+## 3. Ativar login Google
+
+No painel do Supabase:
+
+1. Abra **Authentication → Providers → Google** e habilite o provedor.
+2. Informe o Client ID e Client Secret criados no Google Cloud.
+3. Em **Authentication → URL Configuration**, defina a URL pública do site.
+4. Adicione às Redirect URLs: `https://SEU-DOMINIO/auth` e, durante desenvolvimento, `http://localhost:8080/auth`.
+5. No Google Cloud, cadastre a Callback URL exibida pelo Supabase no cliente OAuth.
+
+Login com e-mail e senha também é suportado.
+
+## 4. Agendamentos automáticos (opcional)
+
+Depois de publicar o aplicativo, copie [`supabase/setup-agendamentos.example.sql`](supabase/setup-agendamentos.example.sql), substitua o domínio e a chave pelos valores reais e execute no SQL Editor. O arquivo agenda rodadas da IA, conferência e geração de bilhetes automáticos.
+
+Não execute o modelo sem substituir `SEU-DOMINIO` e `SUA_CHAVE_CRON`.
+
+## 5. Rodar localmente
 
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
+bun install
+bun run dev
 ```
