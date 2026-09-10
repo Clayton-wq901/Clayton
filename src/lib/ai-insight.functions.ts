@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-const MODEL = "google/gemini-2.5-flash-lite";
+const MODEL = process.env["OPENAI_MODEL"] ?? "gpt-4o-mini";
 
 const PROMPTS: Record<string, string> = {
   match:
@@ -29,10 +29,10 @@ export const getAiInsight = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) throw new Error("IA indisponível: chave não configurada.");
+    const key = process.env["OPENAI_API_KEY"];
+    if (!key) throw new Error("IA indisponível: configure a variável OPENAI_API_KEY.");
 
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -51,7 +51,7 @@ export const getAiInsight = createServerFn({ method: "POST" })
     if (!res.ok) {
       const body = await res.text();
       if (res.status === 429) throw new Error("Muitas requisições à IA. Tente em instantes.");
-      if (res.status === 402) throw new Error("Créditos de IA esgotados no workspace.");
+      if (res.status === 402) throw new Error("Cota da OpenAI esgotada. Verifique o saldo da sua conta.");
       throw new Error(`Falha na IA [${res.status}]: ${body.slice(0, 200)}`);
     }
 
