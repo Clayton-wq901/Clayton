@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getFixturesByDate, LIVE_STATUSES, FINISHED_STATUSES } from "@/lib/api-football.functions";
+import { useEffect, useState } from "react";
+import { getFixturesByDate } from "@/lib/api-football.functions";
 import { LeagueGroup, groupFixtures } from "@/components/LeagueGroup";
 import { useFavorites } from "@/lib/favorites";
 import { LoadingList, EmptyState } from "@/components/StateViews";
@@ -21,21 +22,34 @@ export const Route = createFileRoute("/proximo")({
 
 function ProximoPage() {
   const date = today();
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const favorites = useFavorites();
   const fetchFixtures = useServerFn(getFixturesByDate);
   const q = useQuery({
     queryKey: ["fixtures", "date", date],
     queryFn: () => fetchFixtures({ data: { date } }),
     staleTime: 60_000,
-    select: (data) => data.filter((f) => !LIVE_STATUSES.has(f.fixture.status.short) && !FINISHED_STATUSES.has(f.fixture.status.short)),
+    refetchInterval: 60_000,
   });
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const upcoming = (q.data ?? [])
+    .filter((f) => {
+      const status = f.fixture.status.short;
+      return (status === "NS" || status === "TBD") && f.fixture.timestamp * 1000 > nowMs;
+    })
+    .sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
 
   return (
     <div className="pt-4">
       <BackHeader title="Próximos jogos" />
       {q.isLoading && <LoadingList />}
-      {q.data && q.data.length === 0 && <EmptyState text="Nenhum jogo agendado restante hoje." />}
-      {q.data && q.data.length > 0 && groupFixtures(q.data, favorites).map((g) => <LeagueGroup key={g.key} group={g} />)}
+      {q.data && upcoming.length === 0 && <EmptyState text="Nenhum jogo agendado restante hoje." />}
+      {upcoming.length > 0 && groupFixtures(upcoming, favorites).map((g) => <LeagueGroup key={g.key} group={g} />)}
     </div>
   );
 }
