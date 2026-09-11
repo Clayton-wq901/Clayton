@@ -138,42 +138,30 @@ export const clearChatMessages = createServerFn({ method: "POST" })
  */
 export const introMessage = createServerFn({ method: "GET" }).handler(async () => {
   const { getPlatformSnapshotRaw } = await import("./diagnostics.server");
-  const snapshot = await getPlatformSnapshotRaw();
+  const { runSiteScan } = await import("./site-scan.server");
+  const { geminiChat } = await import("./ai-provider.server");
+  const [snapshot, scan] = await Promise.all([getPlatformSnapshotRaw(), runSiteScan()]);
 
-  const key = process.env["OPENAI_API_KEY"];
-  if (!key) throw new Error("IA indisponível: configure a variável OPENAI_API_KEY.");
-
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-    body: JSON.stringify({
-      model: getModel(),
-      messages: [
-        { role: "system", content: SYSTEM },
-        { role: "system", content: `SNAPSHOT REAL DO BANCO (JSON):\n${JSON.stringify(snapshot)}` },
-        {
-          role: "user",
-          content:
-            "Esta é a abertura da sessão. Ignore o formato padrão de diagnóstico e responda assim:\n" +
-            "## Mapeamento do sistema\nBullets curtos mostrando que você leu o banco AGORA: cobertura das próximas 24h (prontos/skipped/pendentes), assertividade global, os 3 melhores e os 3 piores mercados com % e volume, estado do cache e das últimas rodadas, snapshots de varredura.\n" +
-            "## Leitura das abas\n1 bullet por área relevante (Dashboard Clayton, Bingão Prova Real, Lotéca IA, Radar, Beta, Alfha, Artilheiros, Especiais Betano, Bilhetes Auto) dizendo como ela está sendo afetada pelos números acima.\n" +
-            "## O que atacamos agora?\n3 sugestões numeradas de otimização priorizadas pelo impacto, e termine perguntando o que eu quero analisar ou otimizar.\n" +
-            "NÃO gere bloco de prompt nesta mensagem.",
-        },
-      ],
-      stream: false,
-    }),
+  const text = await geminiChat({
+    system: [
+      SYSTEM,
+      `SNAPSHOT REAL DO BANCO (JSON):\n${JSON.stringify(snapshot)}`,
+      `VARREDURA AO VIVO DO SITE (JSON):\n${JSON.stringify(scan)}`,
+    ],
+    messages: [
+      {
+        role: "user",
+        content:
+          "Esta é a abertura da sessão. Ignore o formato padrão de diagnóstico e responda assim:\n" +
+          "## Mapeamento do sistema\nBullets curtos mostrando que você leu o banco AGORA: cobertura das próximas 24h (prontos/skipped/pendentes), assertividade global, os 3 melhores e os 3 piores mercados com % e volume, estado do cache e das últimas rodadas, snapshots de varredura.\n" +
+          "## Varredura do site\nBullets com o resultado real da varredura: rotas que responderam ou falharam (com tempo), tabelas acessíveis e com quantas linhas, integrações sem chave.\n" +
+          "## Leitura das abas\n1 bullet por área relevante (Dashboard Clayton, Bingão Prova Real, Lotéca IA, Radar, Beta, Alfha, Artilheiros, Especiais Betano, Bilhetes Auto) dizendo como ela está sendo afetada pelos números acima.\n" +
+          "## O que atacamos agora?\n3 sugestões numeradas de otimização priorizadas pelo impacto, e termine perguntando o que eu quero analisar ou otimizar.\n" +
+          "NÃO gere bloco de prompt nesta mensagem.",
+      },
+    ],
+    maxOutputTokens: 4096,
   });
+  return { text, snapshot, scan };
 
-  if (!res.ok) {
-    const body = await res.text();
-    if (res.status === 429) throw new Error("Muitas requisições à IA. Tente em instantes.");
-    if (res.status === 402) throw new Error("Cota da OpenAI esgotada. Verifique o saldo da sua conta.");
-    throw new Error(`Falha na IA [${res.status}]: ${body.slice(0, 200)}`);
-  }
-
-  const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-  const text = json.choices?.[0]?.message?.content?.trim();
-  if (!text) throw new Error("A IA não retornou a apresentação.");
-  return { text, snapshot };
 });
