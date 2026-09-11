@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-const getModel = () => process.env["OPENAI_MODEL"] ?? "gpt-4o-mini";
+
 
 const PROMPTS: Record<string, string> = {
   match:
