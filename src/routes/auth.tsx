@@ -22,6 +22,8 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -67,26 +69,40 @@ function AuthPage() {
   const handleEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setInfo(null);
     setBusy(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: { emailRedirectTo: window.location.origin },
         });
         if (error) throw error;
+        if (!data.session) {
+          setInfo("Conta criada. Confirme o e-mail que enviamos e depois entre por aqui.");
+          setMode("signin");
+          return;
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       }
       navigate({ to: "/" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha na autenticação");
+      const msg = err instanceof Error ? err.message : "Falha na autenticação";
+      setError(
+        /invalid login credentials/i.test(msg)
+          ? "E-mail ou senha incorretos."
+          : /email not confirmed/i.test(msg)
+            ? "Confirme o e-mail antes de entrar."
+            : msg,
+      );
     } finally {
       setBusy(false);
     }
   };
+
 
   const handleGoogle = async () => {
     setError(null);
