@@ -16,7 +16,7 @@ export interface ChatMessage {
   attachments?: ChatAttachment[];
 }
 
-export const getGeminiModel = () => process.env["GEMINI_MODEL"] ?? "gemini-2.5-flash";
+export const getGeminiModel = () => process.env["GEMINI_MODEL"] ?? "gemini-3.6-flash";
 
 function requireKey() {
   const key = process.env["GEMINI_API_KEY"];
