@@ -15,11 +15,11 @@ Copie `.env.example` para `.env` e preencha:
 - `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`: conexão pública do navegador.
 - `SUPABASE_URL`, `SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY`: conexão no servidor.
 - `CRON_SECRET`: segredo longo e exclusivo para proteger tarefas automáticas.
-- `OPENAI_API_KEY`: análises com IA.
+- `GEMINI_API_KEY`: análises com IA (Google Gemini).
 - `API_FOOTBALL_KEY`: jogos, estatísticas e resultados.
 - `VITE_SITE_URL`: URL pública final.
 
-Nunca exponha `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `OPENAI_API_KEY` ou `API_FOOTBALL_KEY` no navegador.
+Nunca exponha `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `GEMINI_API_KEY` ou `API_FOOTBALL_KEY` no navegador.
 
 ## 3. Ativar login Google
 
