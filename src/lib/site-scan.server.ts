@@ -67,21 +67,26 @@ async function checkRoute(baseUrl: string, path: string): Promise<RouteCheck> {
 }
 
 export async function runSiteScan(): Promise<SiteScan> {
-  const baseUrl = resolveBaseUrl();
+  const internal = resolveInternalBaseUrl();
+  const publicUrl = resolvePublicBaseUrl();
   const problems: string[] = [];
 
   const routes = await Promise.all(
     ROUTES.map(async (path): Promise<RouteCheck> => {
-      const started = Date.now();
-      try {
-        const res = await fetch(`${baseUrl}${path}`, { headers: { "user-agent": "OneOption-Scanner" } });
-        const check = { path, status: res.status, ms: Date.now() - started, ok: res.ok };
-        if (!res.ok) problems.push(`Rota ${path} respondeu ${res.status}.`);
-        return check;
-      } catch (e) {
-        problems.push(`Rota ${path} não respondeu: ${(e as Error).message}`);
-        return { path, status: null, ms: Date.now() - started, ok: false, error: (e as Error).message };
+      let check = await checkRoute(internal, path);
+      // Se a checagem interna falhar, tenta a URL pública antes de reportar erro.
+      if (!check.ok && publicUrl) {
+        const external = await checkRoute(publicUrl, path);
+        if (external.ok) check = external;
       }
+      if (!check.ok) {
+        problems.push(
+          check.status
+            ? `Rota ${path} respondeu ${check.status}.`
+            : `Rota ${path} não respondeu: ${check.error}`,
+        );
+      }
+      return check;
     }),
   );
 
