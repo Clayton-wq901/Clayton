@@ -45,3 +45,7 @@ Não execute o modelo sem substituir `SEU-DOMINIO` e `SUA_CHAVE_CRON`.
 bun install
 bun run dev
 ```
+
+## 4.1 Agendamentos prontos
+
+Use `supabase/setup-agendamentos.sql`: já vem com o endereço publicado; basta trocar `SUA_CHAVE_CRON` pelo valor de `CRON_SECRET` e executar no SQL Editor.
