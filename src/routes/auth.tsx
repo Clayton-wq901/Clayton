@@ -188,6 +188,7 @@ function AuthPage() {
               className="w-full pl-9 pr-3 py-2 rounded-lg bg-background border border-border text-sm"
             />
           </div>
+          {info && <div className="text-xs text-primary">{info}</div>}
           {error && <div className="text-xs text-destructive">{error}</div>}
           <button
             type="submit"
