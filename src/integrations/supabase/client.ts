@@ -9,7 +9,9 @@ function createSupabaseClient() {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: true,
+      // A troca do código do Google é feita manualmente em /auth
+      detectSessionInUrl: false,
+      flowType: "pkce",
     },
   });
 }
