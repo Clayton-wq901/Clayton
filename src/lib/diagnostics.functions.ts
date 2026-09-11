@@ -65,61 +65,27 @@ export const diagnosticChat = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    const key = process.env["OPENAI_API_KEY"];
-    if (!key) throw new Error("IA indisponível: configure a variável OPENAI_API_KEY.");
-
+    const { geminiChat } = await import("./ai-provider.server");
     const { getPlatformSnapshotRaw } = await import("./diagnostics.server");
-    const snapshot = await getPlatformSnapshotRaw();
+    const { runSiteScan } = await import("./site-scan.server");
+    const [snapshot, scan] = await Promise.all([getPlatformSnapshotRaw(), runSiteScan()]);
 
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-      body: JSON.stringify({
-        model: getModel(),
-        messages: [
-          { role: "system", content: SYSTEM },
-          {
-            role: "system",
-            content: `SNAPSHOT REAL DO BANCO (JSON):\n${JSON.stringify(snapshot)}`,
-          },
-          ...data.messages.map((m) => {
-          if (!m.attachments?.length) return { role: m.role, content: m.content };
-          const parts: Record<string, unknown>[] = [{ type: "text", text: m.content }];
-          for (const a of m.attachments) {
-            if (a.mime.startsWith("image/")) {
-              parts.push({ type: "image_url", image_url: { url: a.dataUrl } });
-            } else if (a.mime.startsWith("video/")) {
-              parts.push({ type: "video_url", video_url: { url: a.dataUrl } });
-            } else if (a.mime.startsWith("audio/")) {
-              const base64 = a.dataUrl.split(",")[1] ?? "";
-              const sub = a.mime.split("/")[1]?.split(";")[0] ?? "webm";
-              const format = sub === "mpeg" ? "mp3" : sub === "mp4" || sub === "x-m4a" ? "m4a" : sub;
-              parts.push({ type: "input_audio", input_audio: { data: base64, format } });
-            } else {
-              parts.push({ type: "file", file: { filename: a.name, file_data: a.dataUrl } });
-            }
-          }
-          return { role: m.role, content: parts };
-        }),
-        ],
-        stream: false,
-      }),
+    const text = await geminiChat({
+      system: [
+        SYSTEM,
+        `SNAPSHOT REAL DO BANCO (JSON):\n${JSON.stringify(snapshot)}`,
+        `VARREDURA AO VIVO DO SITE (JSON):\n${JSON.stringify(scan)}`,
+      ],
+      messages: data.messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+        attachments: m.attachments,
+      })),
+      maxOutputTokens: 4096,
     });
-
-    if (!res.ok) {
-      const body = await res.text();
-      if (res.status === 429) throw new Error("Muitas requisições à IA. Tente em instantes.");
-      if (res.status === 402) throw new Error("Cota da OpenAI esgotada. Verifique o saldo da sua conta.");
-      throw new Error(`Falha na IA [${res.status}]: ${body.slice(0, 200)}`);
-    }
-
-    const json = (await res.json()) as {
-      choices?: { message?: { content?: string } }[];
-    };
-    const text = json.choices?.[0]?.message?.content?.trim();
-    if (!text) throw new Error("A IA não retornou uma análise válida.");
-    return { text, snapshot };
+    return { text, snapshot, scan };
   });
+
 
 /* ------------------------------------------------------------------ *
  * Histórico permanente do chat (tabela assistant_messages)            *
