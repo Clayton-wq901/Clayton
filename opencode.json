@@ -1,0 +1,27 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "neko_supabase_nusgntkunatwpkrmhzfp": {
+      "type": "remote",
+      "url": "https://mcp.supabase.com/mcp?project_ref=nusgntkunatwpkrmhzfp",
+      "enabled": true,
+      "timeout": 30000
+    }
+  },
+  "permission": {
+    "neko_supabase_nusgntkunatwpkrmhzfp_*": "ask",
+    "neko_supabase_nusgntkunatwpkrmhzfp_list_tables": "allow",
+    "neko_supabase_nusgntkunatwpkrmhzfp_list_extensions": "allow",
+    "neko_supabase_nusgntkunatwpkrmhzfp_list_migrations": "allow",
+    "neko_supabase_nusgntkunatwpkrmhzfp_get_logs": "allow",
+    "neko_supabase_nusgntkunatwpkrmhzfp_get_advisors": "allow",
+    "neko_supabase_nusgntkunatwpkrmhzfp_get_project_url": "allow",
+    "neko_supabase_nusgntkunatwpkrmhzfp_get_publishable_keys": "allow",
+    "neko_supabase_nusgntkunatwpkrmhzfp_generate_typescript_types": "allow",
+    "neko_supabase_nusgntkunatwpkrmhzfp_list_edge_functions": "allow",
+    "neko_supabase_nusgntkunatwpkrmhzfp_get_edge_function": "allow",
+    "neko_supabase_nusgntkunatwpkrmhzfp_search_docs": "allow",
+    "neko_supabase_nusgntkunatwpkrmhzfp_list_branches": "allow",
+    "neko_supabase_nusgntkunatwpkrmhzfp_get_storage_config": "allow"
+  }
+}
