@@ -1,3 +1,16 @@
+# Ambiente (contém chaves secretas — nunca subir)
+.env
+.env.*
+!.env.example
+
+# Gerenciado pelo bun.lock
+package-lock.json
+npm-shrinkwrap.json
+
+# Diretórios do ambiente local / lixo de instalação
+.neko/
+.trash_*/
+
 # Logs
 logs
 *.log
