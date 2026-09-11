@@ -7,7 +7,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const getModel = () => process.env["OPENAI_MODEL"] ?? "gpt-4o-mini";
+/** Varredura completa do site (rotas, tabelas e integrações). */
+export const scanSite = createServerFn({ method: "GET" }).handler(async () => {
+  const { runSiteScan } = await import("./site-scan.server");
+  return await runSiteScan();
+});
+
 
 export type { PlatformSnapshot } from "./diagnostics.server";
 
