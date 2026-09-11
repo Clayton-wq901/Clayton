@@ -43,12 +43,27 @@ const TABLES = [
   "betano_tickets",
 ] as const;
 
-function resolveBaseUrl() {
-  return (
-    process.env["SITE_URL"] ??
-    process.env["VITE_SITE_URL"] ??
-    "http://localhost:8080"
-  ).replace(/\/$/, "");
+/** URL interna: evita proxies/CDN que bloqueiam varredura automática (403). */
+function resolveInternalBaseUrl() {
+  const port = process.env["PORT"] ?? "8080";
+  return `http://127.0.0.1:${port}`;
+}
+
+function resolvePublicBaseUrl() {
+  const url = process.env["SITE_URL"] ?? process.env["VITE_SITE_URL"];
+  return url ? url.replace(/\/$/, "") : null;
+}
+
+async function checkRoute(baseUrl: string, path: string): Promise<RouteCheck> {
+  const started = Date.now();
+  try {
+    const res = await fetch(`${baseUrl}${path}`, {
+      headers: { "user-agent": "Mozilla/5.0 (compatible; OneOptionScanner/1.0)", accept: "text/html" },
+    });
+    return { path, status: res.status, ms: Date.now() - started, ok: res.ok };
+  } catch (e) {
+    return { path, status: null, ms: Date.now() - started, ok: false, error: (e as Error).message };
+  }
 }
 
 export async function runSiteScan(): Promise<SiteScan> {
