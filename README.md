@@ -46,6 +46,17 @@ bun install
 bun run dev
 ```
 
+## 6. Sincronização com GitHub
+
+O projeto pode ser conectado a um repositório GitHub pelo editor do Lovable:
+
+1. No editor, clique no botão **+** no canto inferior esquerdo.
+2. Vá em **GitHub → Connect project**.
+3. Autorize o app do Lovable e escolha a conta/organização.
+4. Clique em **Create Repository**.
+
+Depois de conectado, qualquer alteração no código sincroniza automaticamente com o GitHub.
+
 ## 4.1 Agendamentos prontos
 
 Use `supabase/setup-agendamentos.sql`: já vem com o endereço publicado; basta trocar `SUA_CHAVE_CRON` pelo valor de `CRON_SECRET` e executar no SQL Editor.
