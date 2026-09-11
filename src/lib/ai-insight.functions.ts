@@ -29,45 +29,11 @@ export const getAiInsight = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    const key = process.env["OPENAI_API_KEY"];
-    if (!key) throw new Error("IA indisponível: configure a variável OPENAI_API_KEY.");
-
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${key}`,
-      },
-      body: JSON.stringify({
-        model: getModel(),
-        messages: [
-          { role: "system", content: PROMPTS[data.kind] },
-          { role: "user", content: data.context },
-        ],
-        stream: false,
-      }),
+    const { geminiChat } = await import("./ai-provider.server");
+    const text = await geminiChat({
+      system: [PROMPTS[data.kind]!],
+      messages: [{ role: "user", content: data.context }],
     });
-
-    if (!res.ok) {
-      const body = await res.text();
-      if (res.status === 429) throw new Error("Muitas requisições à IA. Tente em instantes.");
-      if (res.status === 402) throw new Error("Cota da OpenAI esgotada. Verifique o saldo da sua conta.");
-      throw new Error(`Falha na IA [${res.status}]: ${body.slice(0, 200)}`);
-    }
-
-    const textRes = await res.text();
-    let json;
-    try {
-      json = JSON.parse(textRes);
-    } catch (e) {
-      console.error("Failed to parse AI response as JSON:", textRes);
-      throw new Error("Resposta da IA inválida: formato não reconhecido.");
-    }
-
-    const text = json.choices?.[0]?.message?.content?.trim();
-    if (!text) {
-      console.error("AI Response Content Missing:", json);
-      throw new Error("A IA não retornou uma análise válida.");
-    }
     return { text };
   });
+
