@@ -44,13 +44,17 @@ function AuthPage() {
       setBusy(true);
       supabase.auth
         .exchangeCodeForSession(code)
-        .then(({ error }) => {
-          if (error) {
-            setError(error.message);
-            setBusy(false);
-            return;
-          }
+        .then(async ({ error }) => {
           window.history.replaceState({}, "", "/auth");
+          if (error) {
+            // pode já ter sido trocado; confere se a sessão existe mesmo assim
+            const { data } = await supabase.auth.getSession();
+            if (!data.session) {
+              setError(error.message);
+              setBusy(false);
+              return;
+            }
+          }
           navigate({ to: "/" });
         })
         .catch((err: unknown) => {
