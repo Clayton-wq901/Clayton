@@ -1,0 +1,103 @@
+/**
+ * Varredura automática do site: verifica as rotas principais, as tabelas do
+ * Supabase e as integrações externas, dando ao assistente autonomia para
+ * diagnosticar o funcionamento real da aplicação.
+ */
+
+export interface RouteCheck {
+  path: string;
+  status: number | null;
+  ms: number;
+  ok: boolean;
+  error?: string;
+}
+
+export interface TableCheck {
+  table: string;
+  ok: boolean;
+  rows: number | null;
+  error?: string;
+}
+
+export interface SiteScan {
+  scannedAt: string;
+  baseUrl: string;
+  routes: RouteCheck[];
+  tables: TableCheck[];
+  integrations: { name: string; configured: boolean }[];
+  problems: string[];
+}
+
+const ROUTES = ["/", "/live", "/placar", "/proximo", "/seguinte", "/auth"];
+
+const TABLES = [
+  "fechamentos",
+  "ai_rounds",
+  "ai_predictions",
+  "ai_tickets",
+  "ai_weights",
+  "ai_selftest",
+  "api_cache",
+  "auto_tickets",
+  "assistant_messages",
+  "betano_tickets",
+] as const;
+
+function resolveBaseUrl() {
+  return (
+    process.env["SITE_URL"] ??
+    process.env["VITE_SITE_URL"] ??
+    "http://localhost:8080"
+  ).replace(/\/$/, "");
+}
+
+export async function runSiteScan(): Promise<SiteScan> {
+  const baseUrl = resolveBaseUrl();
+  const problems: string[] = [];
+
+  const routes = await Promise.all(
+    ROUTES.map(async (path): Promise<RouteCheck> => {
+      const started = Date.now();
+      try {
+        const res = await fetch(`${baseUrl}${path}`, { headers: { "user-agent": "OneOption-Scanner" } });
+        const check = { path, status: res.status, ms: Date.now() - started, ok: res.ok };
+        if (!res.ok) problems.push(`Rota ${path} respondeu ${res.status}.`);
+        return check;
+      } catch (e) {
+        problems.push(`Rota ${path} não respondeu: ${(e as Error).message}`);
+        return { path, status: null, ms: Date.now() - started, ok: false, error: (e as Error).message };
+      }
+    }),
+  );
+
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const tables = await Promise.all(
+    TABLES.map(async (table): Promise<TableCheck> => {
+      const { count, error } = await supabaseAdmin
+        .from(table)
+        .select("*", { count: "exact", head: true });
+      if (error) {
+        problems.push(`Tabela ${table}: ${error.message}`);
+        return { table, ok: false, rows: null, error: error.message };
+      }
+      return { table, ok: true, rows: count ?? 0 };
+    }),
+  );
+
+  const integrations = [
+    { name: "GEMINI_API_KEY", configured: Boolean(process.env["GEMINI_API_KEY"]) },
+    { name: "API_FOOTBALL_KEY", configured: Boolean(process.env["API_FOOTBALL_KEY"]) },
+    { name: "CRON_SECRET", configured: Boolean(process.env["CRON_SECRET"]) },
+    {
+      name: "SUPABASE_SERVICE_ROLE_KEY",
+      configured: Boolean(
+        process.env["SUPABASE_SERVICE_ROLE_KEY"] ?? process.env["APP_SUPABASE_SERVICE_ROLE_KEY"],
+      ),
+    },
+  ];
+  for (const i of integrations) {
+    if (!i.configured) problems.push(`Integração sem chave configurada: ${i.name}.`);
+  }
+
+  return { scannedAt: new Date().toISOString(), baseUrl, routes, tables, integrations, problems };
+}
