@@ -119,5 +119,12 @@ export async function runSiteScan(): Promise<SiteScan> {
     if (!i.configured) problems.push(`Integração sem chave configurada: ${i.name}.`);
   }
 
-  return { scannedAt: new Date().toISOString(), baseUrl, routes, tables, integrations, problems };
+  return {
+    scannedAt: new Date().toISOString(),
+    baseUrl: publicUrl ?? internal,
+    routes,
+    tables,
+    integrations,
+    problems,
+  };
 }
