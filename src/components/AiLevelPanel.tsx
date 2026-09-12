@@ -404,7 +404,7 @@ export function AiLevelPanel() {
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-[0.03] pointer-events-none" />
       <div className="flex items-center gap-4 px-6 py-6 border-b border-white/5 bg-blue-600/5 relative">
         <div className="w-16 h-16 rounded-[1.25rem] bg-blue-600/20 flex items-center justify-center border border-blue-600/40 shadow-inner relative z-10">
-          <Activity className="w-8 h-8 text-blue-400 drop-shadow-[0_0_10px_rgba(234,88,12,0.4)]" />
+          <Activity className="w-8 h-8 text-blue-400 drop-shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
         </div>
         <div className="flex-1 min-w-0 relative z-10">
           <div className="text-base font-black uppercase tracking-wider text-blue-400">Assertividade OneOption IA</div>

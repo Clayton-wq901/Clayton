@@ -656,7 +656,7 @@ export function EspeciaisBetanoPanel() {
     <div className="mx-3 my-6 rounded-[2.5rem] bg-card border border-white/5 overflow-hidden shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex flex-col sm:flex-row sm:items-center gap-4 px-6 py-6 border-b border-white/5 bg-gradient-to-r from-blue-600/10 to-transparent">
         <div className="w-16 h-16 rounded-3xl bg-blue-600/20 flex items-center justify-center border border-blue-600/30 shadow-inner">
-          <Star className="w-10 h-10 text-blue-400 drop-shadow-[0_0_12px_rgba(234,88,12,0.5)]" />
+          <Star className="w-10 h-10 text-blue-400 drop-shadow-[0_0_12px_rgba(59,130,246,0.5)]" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3">
@@ -707,7 +707,7 @@ export function EspeciaisBetanoPanel() {
           </div>
           <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/10">
             <div 
-              className="h-full bg-gradient-to-r from-blue-600 to-blue-400 transition-all duration-300 shadow-[0_0_8px_rgba(234,88,12,0.4)]" 
+              className="h-full bg-gradient-to-r from-blue-600 to-blue-400 transition-all duration-300 shadow-[0_0_8px_rgba(59,130,246,0.5)]" 
               style={{ width: `${scanProgress}%` }}
             />
           </div>

@@ -1274,7 +1274,7 @@ export function BingaoClosurePanel() {
               <div 
                 className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500 ${
                   currentStep >= s.step 
-                    ? "bg-blue-600 text-white shadow-[0_0_15px_rgba(234,88,12,0.4)]" 
+                    ? "bg-blue-600 text-white shadow-[0_0_15px_rgba(59,130,246,0.5)]" 
                     : "bg-white/5 text-white/30 border border-white/10"
                 }`}
               >
