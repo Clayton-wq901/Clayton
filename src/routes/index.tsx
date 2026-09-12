@@ -55,7 +55,7 @@ function todayISO() {
 
 const SITE_URL = (import.meta.env["VITE_SITE_URL"] as string | undefined) ?? "https://one-option.app";
 const PAGE_TITLE = "Jogos de futebol ao vivo hoje — placar, HT e escanteios em tempo real";
-const PAGE_DESC = "Acompanhe todos os jogos do dia com placar minuto a minuto, filtros por horário e análise inteligente pra decidir suas apostas com mais confiança.";
+const PAGE_DESC = "Acompanhe todos os jogos do dia com placar minuto a minuto, filtros por horário e análise inteligente pra decidir suas apostas com mais confiança. Teste de commit.";
 
 export const Route = createFileRoute("/")({
   validateSearch: z.object({ date: z.string().optional() }),
